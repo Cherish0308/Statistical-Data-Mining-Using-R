@@ -1,0 +1,235 @@
+---
+title: '33333'
+output:
+  word_document: default
+  pdf_document: default
+date: "2024-03-09"
+---
+
+
+3) Consider the MovieLense data that is available in the recommenderlab
+package
+
+
+
+```{r}
+library(recommenderlab)
+data(MovieLense)
+
+```
+
+
+```{r}
+library(arules)
+data("MovieLense")
+
+data('MovieLense')
+rating=MovieLense
+head(rating) #6 x 1664
+head(as(rating, "data.frame"))
+
+
+```
+```{r}
+user_ids = dimnames(rating)[[1]]  
+movie_ids = dimnames(rating)[[2]]
+
+tot_users = length(user_ids)
+tot_movies = length(movie_ids)
+
+print(paste("Number of unique users:", tot_users))
+print(paste("Number of unique movies:", tot_movies))
+```
+
+```{r}
+
+class(MovieLense)
+
+as(rating[1:10, 1:10], "matrix")
+```
+
+```{r}
+# Class
+class(MovieLense)
+
+subset_rating = rating[1:10, 1:10]
+subset_matrix = as(subset_rating, "matrix")
+
+subset_matrix
+
+```
+```{r}
+# Normalize the rating matrix
+R_Normalize = normalize(rating)
+
+subset_normalized = R_Normalize[1:10, 1:10]
+subset_matrix = as(subset_normalized, "matrix")
+
+subset_matrix
+
+```
+#Why did we Normalize?
+
+Scale Consistency: It brings different users' rating scales to a uniform scale, making it easier to compare and aggregate ratings across users.
+
+Improved Algorithm Performance: Normalized data can enhance the performance of recommendation algorithms by highlighting underlying patterns and reducing the impact of scale differences.
+
+Bias Mitigation: It helps in centering the data around a central value, such as zero, allowing the algorithms to better handle user and item biases by focusing on deviations from average behaviors.
+
+
+#Visualisation:
+
+```{r}
+# Normalized rating
+quartz()
+image(R_Normalize[1:100, 1:100], main = "Normalized_R")
+
+```
+```{r}
+#Raw rating
+quartz()
+image(rating[1:100, 1:100], main = "Raw Ratings")
+
+```
+
+```{r}
+#Extracting the info from rating matrix:
+
+rating_matrix = getRatingMatrix(R_Normalize)
+
+subset_matrix = as(rating_matrix[1:10, 1:10], "matrix")
+
+subset_matrix
+```
+
+```{r}
+R_Denormalize = denormalize(R_Normalize)
+R_Denormalize_matrix = as(R_Denormalize, "matrix")
+
+avg_rating = mean(R_Denormalize_matrix, na.rm = TRUE)
+print(avg_rating)
+
+# Binary matrix from the de-normalized ratings, considering ratings of 3.5 and above as '1' and below 3.5 as '0'
+
+R_Binarize = binarize(R_Denormalize, minRating = 3.5)
+
+
+quartz()
+image(R_Binarize[1:100, 1:100], main = "Binarized Ratings")
+```
+
+
+
+```{r}
+# Denormalize the normalized rating matrix
+R_DN1 = denormalize(R_Normalize)
+
+R_DN_matrix1 = as(R_DN1, "matrix")
+
+avg_rat1 = mean(R_DN_matrix1, na.rm = TRUE)
+print(avg_rat1)
+
+
+R_Bin1 = binarize(R_DN1, minRating = 3.5)
+
+# Visualization
+quartz()
+image(R_Bin1[1:100, 1:100], main = "Binarized Ratings")
+
+```
+
+#Why did we De-normalize instead of taking the original dataset:
+Interpretability: Converts algorithm outputs back to the original rating scale for user understanding.
+Comparison: Allows direct comparison of predicted ratings with original user ratings for evaluation.
+Usability: Ensures recommendations are presented in a familiar format for actionable decision-making by users.
+
+
+
+```{r}
+quartz(title="Histogram of Normalized Ratings")
+hist(getRatings(R_Normalize), breaks=100, main="Histogram of Normalized Ratings")
+
+# Rating given by users
+quartz(title="Histogram of Ratings by Users")
+hist(rowCounts(R_Normalize), breaks=100, main="Ratings Given by Users")
+
+# Ratings received by movies
+quartz(title="Histogram of Ratings per Movie")
+hist(colCounts(R_Normalize), breaks=100, main="Count of Ratings per Movie")
+```
+
+
+```{r}
+?recommenderRegistry
+recommenderRegistry$get_entries(dataType = "realRatingMatrix")
+```
+
+
+a) Develop a user-based recommender system. Create the system so that
+outputs a user’s top ten recommendations. Demo it on five users?
+
+
+
+```{r}
+rUBCF = Recommender(MovieLense, method="UBCF")
+
+# Create top 10 recommendations for the first 5 users
+rRec = predict(rUBCF, MovieLense[1:5], n=10)
+
+rLst = as(rRec, "list")
+rLst
+```
+
+
+b) For the same users in part A, predict their top 10 recommendations based
+on an item-based recommender system. How do they compare?
+
+
+```{r}
+rIBCF = Recommender(MovieLense, method="IBCF")
+
+# Top 10 recommendations for the first 5 users using the item-based system
+iRec = predict(rIBCF, MovieLense[1:5], n=10)
+
+iLst = as(iRec, "list")
+iLst
+```
+
+#How do they compare?
+
+UBCF is like getting movie recommendations from friends who know what's popular and what you like.
+
+IBCF is like advice from a movie expert who suggests unique films closely matched to your tastes.
+
+
+
+c) Consider the first user part A. Are the goals of a recommender system
+met – relevance, novelty, serendipity, diversity? Comment on each of the
+best you can given the information you have. 
+
+
+
+
+
+Relevance:
+The recommendations seem to include movies that might align with the user's preferences, such as "Boot, Das" and "Leaving Las Vegas." 
+
+Novelty:
+The list presents a mix of well-known and potentially new movies. While some titles are familiar, others like "Winter Guest, The" and "Double vie de Veronique, La" could offer fresh experiences if the user hasn't seen them before.
+
+Serendipity:
+There's potential for pleasant surprises in the recommendations, especially with unique titles like "City of Lost Children" and "Double vie de Veronique, La" that could introduce the user to new genres or themes.
+
+Diversity:
+The recommendations cover various genres, time periods, and cultural backgrounds, providing a diverse selection to explore. This variety offers the user a chance to discover different types of movies.
+
+In summary, the recommendations show promise in meeting the goals of relevance, novelty, serendipity, and diversity. However, without more information about the user's preferences, it's challenging to assess their effectiveness accurately.
+
+
+
+
+
+
+
+
+

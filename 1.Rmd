@@ -1,0 +1,233 @@
+---
+title: "1DTT"
+output:
+  word_document: default
+  pdf_document: default
+date: "2024-03-09"
+---
+
+1) (Modified Exercise 14.4 in ESL) Cluster the demographic data
+(>data(marketing in ESL package)) of Table 14.1 using “generalized
+association rules” with a classification tree. (This data can also be found on
+the ESL website). Specifically, generate a reference sample the same size as
+the training set, by either (a) randomly permuting the columns independently,
+or by (b) sampling from a uniform distribution the values within each feature.
+Build a classification tree to the training sample (class 1) and the reference
+sample (class 0) and describe the terminal nodes having highest estimated
+class 1 probability?
+
+
+
+```{r}
+
+
+```
+
+
+
+```{r}
+rm(list = ls())
+
+library(rpart) 
+library(rpart.plot)
+```
+
+
+```{r}
+
+col= c("ANNUAL_INCOME", "Sex", "Marital_Status", "Age", "Education", "Occupation", "Years_In_BayArea", "Dual_Income", "Numbers_in_Household",
+                  "Number_of_Children", "Householder_Status", "Type_of_Home", "Ethnic_Classification", "Language_in_Home")
+
+data = read.table("/Users/avishma/Downloads/marketingdata", header=FALSE, sep=" ", na.strings = "NA", col.names = col)
+head(data)
+
+
+str(data)
+
+
+```
+
+
+##Data Preprocessing
+
+
+```{r}
+
+any_na = any(is.na(data))
+na_count_per_column <- colSums(is.na(data))
+
+any_na
+na_count_per_column
+
+```
+
+
+
+```{r}
+
+# Treating numerical variables (median)
+
+data$ANNUAL_INCOME[is.na(data$ANNUAL_INCOME)] = mean(data$ANNUAL_INCOME, na.rm = TRUE)
+data$Age[is.na(data$Age)] = mean(data$Age, na.rm = TRUE)
+data$Years_In_BayArea[is.na(data$Years_In_BayArea)] = mean(data$Years_In_BayArea, na.rm = TRUE)
+data$Numbers_in_Household[is.na(data$Numbers_in_Household)] = mean(data$Numbers_in_Household, na.rm = TRUE)
+
+
+# Treating categorical variables (mode)
+
+cat_vars = c("Sex", "Marital_Status", "Education", "Occupation", "Householder_Status", "Type_of_Home", "Ethnic_Classification", "Language_in_Home")
+for (var in cat_vars) {
+  data[[var]][is.na(data[[var]])] <- names(sort(table(data[[var]]), decreasing = TRUE))[1]  # Mode
+}
+
+
+```
+
+
+
+```{r}
+
+na_count <- colSums(is.na(data))
+na_count
+
+```
+```{r}
+str(data)
+```
+
+
+
+```{r}
+categorical_vars = c("Sex", "Marital_Status", "Education", "Occupation", "Householder_Status", "Type_of_Home", "Ethnic_Classification", "Language_in_Home", "Dual_Income", "Number_of_Children")
+
+for (var in categorical_vars) {
+  data[[var]] <- as.factor(data[[var]])
+}
+categorical_vars
+```
+
+
+
+
+```{r}
+set.seed(123) 
+reference_sample = data.frame(sapply(data, function(column) sample(column)))
+```
+
+```{r}
+data$class = 1  
+reference_sample$class = 0  
+
+combined_data = rbind(data, reference_sample)
+
+```
+```{r}
+categorical_vars = c("Sex", "Marital_Status", "Education", "Occupation", "Dual_Income", "Householder_Status", "Type_of_Home", "Ethnic_Classification", "Language_in_Home")
+
+for (var in categorical_vars) {
+  combined_data[[var]] <- factor(combined_data[[var]])
+}
+categorical_vars 
+str(categorical_vars)
+```
+```{r}
+str(combined_data)
+```
+
+```{r}
+#Categorical to factor
+independent_vars <- setdiff(names(combined_data), "class")
+for (var in independent_vars) {
+  combined_data[[var]] <- as.factor(combined_data[[var]])
+}
+
+```
+
+```{r}
+str(combined_data)
+```
+
+
+
+
+#Getting the association rules:
+
+
+
+
+```{r}
+
+library(arules)
+
+transact_list <- apply(combined_data, 1, function(row) {
+  items <- names(which(row == 1)) 
+  if (length(items) > 0) items else NULL
+})
+transact_list = Filter(Negate(is.null), transact_list)
+transact = as(transact_list, "transactions")
+
+# Apriori algorithm 
+supp_rules <- apriori(transact, parameter = list(supp = 0.001, conf = 0.01))
+inspect(head(sort(supp_rules, by = "support"), 4))
+
+```
+
+
+
+
+
+Comment on the Association rules:
+
+Rules seem to suggest that Language_in_Home, Dual_Income, and Type_of_Home are very common attributes in the dataset, with the first one being present in almost all transactions. The presence of rules with empty antecedents (left-hand sides) could indicate that the support threshold might be set too low to capture meaningful associations, as these "rules" are simply stating the overall frequency of certain items rather than indicating a strong association between specific items.
+
+
+```{r}
+#Tree Model
+tree_model = rpart(class ~ ., data = combined_data, method = "class")
+tree_model
+
+```
+
+
+
+```{r}
+# Plot the classification tree
+rpart.plot(tree_model, main="Classification Tree", under=TRUE, faclen=0)
+```
+
+#Calculation of Class 1 Probability
+```{r}
+Class = function(number_of_children, numbers_in_household, householder_status, marital_status) {
+  if (number_of_children == 0) {
+    if (numbers_in_household %in% c(1, 2, 3, 4)) { 
+      if (householder_status %in% c(1, 2)) {
+        if (marital_status %in% c(2, 3, 4, 5)) {
+          return(list(class = 1, probability = 0.75)) 
+        }
+      }
+    }
+  }
+  
+  return(list(class = 0, probability = NA)) 
+}
+
+Class(0, 2, 1, 3)
+
+```
+
+
+```{r}
+
+summary(tree_model)
+
+```
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,299 @@
+---
+title: '22222'
+output: word_document
+date: "2024-03-10"
+---
+
+2) Consider the California Housing Data from KAGGLE. You are going to apply
+association rules to this data. (https://www.kaggle.com/camnugent/californiahousing-prices). 
+
+
+a) Read in the data and transfer to a binary incidence matrix. Visualize this
+matrix.
+
+
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(arules)
+
+# Read the data
+hs = read.csv('/Users/avishma/Downloads/housing.csv')
+
+str(hs)
+
+summary(hs)
+head(hs)
+```
+
+```{r}
+# Calculate the median for 'housing_median_age' excluding NA
+median_hma <- median(hs$housing_median_age, na.rm = TRUE)
+# Replace NA values in 'housing_median_age' with the calculated median
+hs$housing_median_age[is.na(hs$housing_median_age)] <- median_hma
+
+# Calculate the median for 'total_bedrooms' excluding NA
+median_tbr <- median(hs$total_bedrooms, na.rm = TRUE)
+# Replace NA values in 'total_bedrooms' with the calculated median
+hs$total_bedrooms[is.na(hs$total_bedrooms)] <- median_tbr
+
+
+# Calculate the mode for 'ocean_proximity'
+table_op <- table(hs$ocean_proximity)  # Create a frequency table for 'ocean_proximity'
+sorted_table_op <- sort(table_op, decreasing = TRUE)  # Sort the table in decreasing order
+mode_op <- names(sorted_table_op)[1]  # Extract the name of the first element which is the mode
+
+# Replace NA values in 'ocean_proximity' with the calculated mode
+hs$ocean_proximity[is.na(hs$ocean_proximity)] <- mode_op
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+# 'housing_median_age'
+hs$housing_median_age = as.character(hs$housing_median_age)
+hs$housing_median_age = as.numeric(hs$housing_median_age)
+                                   
+hs$housing_median_age[is.na(hs$housing_median_age)] <- median(hs$housing_median_age, na.rm = TRUE)
+median_age <- median(hs$housing_median_age, na.rm = TRUE)
+
+hs$housing_median_age = ifelse(hs$housing_median_age <= median_age, "Low", "High")
+hs$housing_median_age = as.factor(hs$housing_median_age)
+
+
+
+
+# 'median_income'
+hs$median_income=  as.character(hs$median_income)
+hs$median_income = as.numeric(hs$median_income)
+
+hs$median_income[is.na(hs$median_income)] <- median(hs$median_income, na.rm = TRUE)
+median_income <- median(hs$median_income, na.rm = TRUE)
+
+hs$median_income <- ifelse(hs$median_income <= median_income, "Low", "High")
+hs$median_income <- as.factor(hs$median_income)
+
+
+# 'total_rooms'
+hs$total_rooms <- as.character(hs$total_rooms)
+hs$total_rooms <- as.numeric(hs$total_rooms)
+
+hs$total_rooms[is.na(hs$total_rooms)] <- median(hs$total_rooms, na.rm = TRUE)
+median_total_rooms <- median(hs$total_rooms, na.rm = TRUE)
+
+hs$total_rooms <- ifelse(hs$total_rooms <= median_total_rooms, "Low", "High")
+hs$total_rooms <- as.factor(hs$total_rooms)
+
+
+
+# 'total_bedrooms' 
+hs$total_bedrooms <- as.character(hs$total_bedrooms)
+hs$total_bedrooms <- as.numeric(hs$total_bedrooms)
+
+hs$total_bedrooms[is.na(hs$total_bedrooms)] <- median(hs$total_bedrooms, na.rm = TRUE)
+median_total_bedrooms <- median(hs$total_bedrooms, na.rm = TRUE)
+
+hs$total_bedrooms <- ifelse(hs$total_bedrooms <= median_total_bedrooms, "Low", "High")
+hs$total_bedrooms <- as.factor(hs$total_bedrooms)
+
+
+
+#'population'
+hs$population <- as.character(hs$population)
+hs$population <- as.numeric(hs$population)
+
+hs$population[is.na(hs$population)] <- median(hs$population, na.rm = TRUE)
+median_population <- median(hs$population, na.rm = TRUE)
+
+hs$population <- ifelse(hs$population <= median_population, "Low", "High")
+hs$population <- as.factor(hs$population)
+
+
+
+#'households'
+hs$households <- as.character(hs$households)
+hs$households <- as.numeric(hs$households)
+
+hs$households[is.na(hs$households)] <- median(hs$households, na.rm = TRUE)
+median_households <- median(hs$households, na.rm = TRUE)
+
+hs$households <- ifelse(hs$households <= median_households, "Low", "High")
+hs$households <- as.factor(hs$households)
+
+
+
+
+# 'median_house_value' 
+hs$median_house_value <- as.character(hs$median_house_value)
+hs$median_house_value <- as.numeric(hs$median_house_value)
+
+hs$median_house_value[is.na(hs$median_house_value)] <- median(hs$median_house_value, na.rm = TRUE)
+median_house_value <- median(hs$median_house_value, na.rm = TRUE)
+
+hs$median_house_value <- ifelse(hs$median_house_value <= median_house_value, "Low", "High")
+hs$median_house_value <- as.factor(hs$median_house_value)
+
+
+str(hs)
+
+
+
+```
+
+
+
+
+
+```{r}
+colnames(hs)
+```
+
+
+
+```{r}
+hs$longitude <- NULL
+hs$latitude <- NULL
+
+
+cols_ocean_proximity <- grep("ocean_proximity", colnames(hs))
+hs[, cols_ocean_proximity] <- lapply(hs[, cols_ocean_proximity], factor)
+
+hs_trans <- as(hs, "transactions")
+
+# Apply the Apriori algorithm
+rules <- apriori(hs_trans, parameter = list(supp = 0.001, conf = 0.8))
+inspect(rules[1:5])
+```
+
+
+
+
+b. What are the top three high lift rules?
+
+```{r}
+
+hs_trans <- as(hs, "transactions")
+
+# Set Apriori parameters
+par <- list(supp = 0.004, conf = 0.5)  
+rul1 <- apriori(hs_trans, parameter = par)
+
+srt1 <- sort(rul1, by = "lift", decreasing = TRUE)
+top3 <- head(srt1, 3)
+inspect(top3)
+
+```
+
+
+c. What are the top 4 rules according to confidence? 
+
+```{r}
+# Convert 'hs' to transaction format if not already done
+hs_trans <- as(hs, "transactions")
+par <- list(supp = 0.004, conf = 0.5)
+
+rul1 <- apriori(hs_trans, parameter = par)
+
+sorted_by_confidence <- sort(rul1, by = "confidence", decreasing = TRUE)
+
+top4_confidence_rules <- head(sorted_by_confidence, 4)
+inspect(top4_confidence_rules)
+
+```
+
+d) A person comes to you and wants to purchase an average priced home
+as close to the ocean as possible. What can you recommend and/or
+what can the expect? Use association rules to guide you.
+
+
+```{r}
+str(hs)
+```
+
+
+d. A person comes to you and wants to purchase an average priced home
+as close to the ocean as possible. What can you recommend and/or
+what can the expect? Use association rules to guide you
+
+
+```{r}
+rules = apriori(hs_trans, parameter = list(supp = 0.001, conf = 0.5))
+rules_filtered = subset(rules, rhs %in% "median_house_value=Low" & lhs %in% "ocean_proximity=NEAR BAY")
+
+inspect(sort(rules_filtered, by = "lift")[1:5])
+
+```
+
+
+The patterns we've discovered mainly point to homes with lower prices around the bay area, especially those with lots of bedrooms and people, but not so much income or space per household. If you're dreaming of a home by the sea at a more middle-of-the-road price, it might be a good idea to explore options that break away from these trends. Think about places that mix it up a bit - maybe with different income ranges or a variety of room numbers. The bay area is still in the mix, but keeping an open mind about what makes a house a home could lead you to your ideal seaside retreat.
+
+
+
+Based on the association rules generated from the dataset, if someone is looking to purchase an average-priced home close to the ocean, the key findings suggest:
+
+The presence of high median income, high total rooms or bedrooms, and a high housing median age significantly associate with properties near the bay (ocean proximity). This implies that higher-priced homes, likely in more established neighborhoods, are more commonly found near the ocean.
+High confidence in the rules suggests a strong relationship between these features and ocean proximity, indicating that buyers looking for ocean-proximity homes should consider properties that match these characteristics.
+
+Recommendation:
+
+Focus on established neighborhoods with higher median ages for housing, as these areas are more likely to offer ocean-proximity homes.
+Be prepared for potentially higher prices due to the desirable location near the ocean and the associated property features.
+
+
+
+
+
+
+e. What characteristics in the data associate with low population areas? 
+
+```{r}
+
+hs_trans <- as(hs, "transactions")
+
+par <- list(supp = 0.004, conf = 0.5) 
+
+rul1 <- apriori(hs_trans, parameter = par)
+rules_low_population <- subset(rul1, rhs %pin% "population=Low")
+
+sorted_by_confidence <- sort(rules_low_population, by = "confidence", decreasing = TRUE)
+
+top4_confidence_rules <- head(sorted_by_confidence, 4)
+inspect(top4_confidence_rules)
+
+```
+
+
+e. What characteristics in the data associate with low population areas? 
+
+High Housing Median Age: Older neighborhoods tend to have lower populations.
+Low Total Rooms and Bedrooms: Smaller homes, which may indicate less densely populated areas.
+Low Households: Fewer households could suggest a lower population density.
+High Median Income: Higher-income areas might have less dense housing, leading to lower population density.
+High Median House Value: More expensive areas might have larger properties with fewer people.
+Ocean Proximity (Near Bay): Being near the bay could be associated with less populated areas in this dataset.
+
+The high confidence levels in these rules (above 97%) indicate a strong relationship between these characteristics and low population areas. The lift values close to 2 suggest these characteristics are approximately twice as likely to occur in low population areas compared to random chance.
+
+
+
+
+
+
+
+
+
+
+
